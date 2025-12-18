@@ -1,18 +1,19 @@
 import { LitElement, html, css }
     from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
-import { apiFetch } from '../api/api-client.js';
+import { apiFetch } from './api/api-client.js';
 
-import './login-form.js';
-import './user-list.js';
-import './user-form.js';
-import './app.navbar.js';
-import './product-list.js';
-import './producto-form.js';
+import './auth/login-form.js';
+import './users/user-list.js';
+import './users/user-form.js';
+import './layout/app-navbar.js';
+import './products/product-list.js';
+import './products/producto-form.js';
 
 export class UserApp extends LitElement {
     static properties = {
         user: { type: Object },
         token: { type: String },
+        view: { type: String }
     };
 
     static styles = css`
@@ -36,8 +37,10 @@ export class UserApp extends LitElement {
     constructor() {
         super();
         this.user = null;
-        this.token = localStorage.getItem('token') || null;
+        this.token = localStorage.getItem('token');
+        this.view = 'login'; // login | register | users
     }
+
 
     connectedCallback() {
         super.connectedCallback();
@@ -48,6 +51,21 @@ export class UserApp extends LitElement {
             this.token = localStorage.getItem('token');
             await this.loadCurrentUser(); // obtiene usuario con roles desde API
         });
+
+        this.addEventListener('logout', () => {
+            this.logout();
+        });
+
+        this.addEventListener('show-login', () => {
+            this.view = 'login';
+            this.requestUpdate();
+        });
+
+        this.addEventListener('show-register', () => {
+            this.view = 'register';
+            this.requestUpdate();
+        });
+
         // Cuando se guarda o elimina un usuario, refrescar la lista
         this.addEventListener('user-saved', () => this.refreshUsers());
         this.addEventListener('user-deleted', () => this.refreshUsers());
@@ -101,7 +119,7 @@ export class UserApp extends LitElement {
             fetch('/api/logout', {
                 method: 'POST',
                 headers: { 'Authorization': `Bearer ${token}` }
-            }).catch(() => {});
+            }).catch(() => { });
         }
 
         localStorage.removeItem('token');
@@ -153,10 +171,17 @@ export class UserApp extends LitElement {
             <!-- CONTENIDO -->
             <div class="container mt-5">
                 ${!this.token || !this.user ? html`
-                    <!-- LOGIN -->
                     <div class="row justify-content-center">
                         <div class="col-md-5">
-                            <login-form></login-form>
+
+                            ${this.view === 'login' ? html`
+                                <login-form></login-form>
+                            ` : ''}
+
+                            ${this.view === 'register' ? html`
+                                <user-form mode="register"></user-form>
+                            ` : ''}
+
                         </div>
                     </div>
                 ` : html`
@@ -168,13 +193,22 @@ export class UserApp extends LitElement {
                                         <h3 class="card-title mb-1">Bienvenido, ${this.user.name}</h3>
                                         <p class="mb-0 small text-muted">Usuario: ${this.user.username} · ${this.user.email}</p>
                                     </div>
-                                    <div>
-                                        <button class="btn btn-outline-secondary btn-sm" @click=${this.logout}>Cerrar sesión</button>
-                                    </div>
                                 </div>
                             </div>
                         </div>
                     </div>
+                    
+
+                    ${isAdmin ? html`
+                        <div class="row mb-4">
+                            <div class="col-md-4 mb-4 mb-md-0">
+                                <user-form></user-form>
+                            </div>
+                            <div class="col-md-8">
+                                <user-list></user-list>
+                            </div>
+                        </div>
+                    ` : ''}
 
                     <div class="row">
                         ${isAdmin ? html`

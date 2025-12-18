@@ -1,5 +1,11 @@
-import './components/producto-form.js'
+import './components/auth/login-form.js';
+import './components/auth/register-form.js';
+import './components/auth/auth-buttons.js';
+import './components/layout/app-navbar.js';
+import './components/layout/app-layout.js';
+import './components/products/product-list.js';
+import './components/products/producto-form.js';
+import './components/products/product-actions.js';
+import './components/shared/delete-button.js';
+import './components/shared/create-button.js';
 import './components/user-app.js';
-import './components/user-list.js';
-import './components/app.navbar.js';
-import './components/user-form.js';

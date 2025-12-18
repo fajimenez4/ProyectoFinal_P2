@@ -1,19 +1,21 @@
 import { LitElement, html } from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
 import { apiFetch } from '../api/api-client.js';
-import './confirm-button.js';
+import '../shared/delete-button.js';
 
-export class UserActions extends LitElement {
+export class ProductActions extends LitElement {
     static properties = {
-        user: { type: Object },
+        producto: { type: Object },
         loading: { type: Boolean },
         error: { type: String },
+        isAdmin: { type: Boolean },
     };
 
     constructor() {
         super();
-        this.user = null;
+        this.producto = null;
         this.loading = false;
         this.error = '';
+        this.isAdmin = false;
     }
 
     createRenderRoot() {
@@ -21,28 +23,29 @@ export class UserActions extends LitElement {
     }
 
     edit() {
-        this.dispatchEvent(new CustomEvent('edit-user', {
-            detail: this.user,
+        if (!this.isAdmin) return;
+        this.dispatchEvent(new CustomEvent('edit-product', {
+            detail: this.producto,
             bubbles: true,
             composed: true,
         }));
     }
 
     async onConfirmedDelete() {
-        if (!this.user || this.loading) return;
+        if (!this.producto || this.loading || !this.isAdmin) return;
         this.error = '';
         this.loading = true;
         try {
-            await apiFetch(`/api/users/${this.user.id}`, { method: 'DELETE' });
-            this.dispatchEvent(new CustomEvent('user-deleted', {
-                detail: this.user.id,
+            await apiFetch(`/api/productos/${this.producto.id}`, { method: 'DELETE' });
+            this.dispatchEvent(new CustomEvent('product-deleted', {
+                detail: this.producto.id,
                 bubbles: true,
                 composed: true,
             }));
         } catch (err) {
             this.error = err.message;
-            this.dispatchEvent(new CustomEvent('user-error', {
-                detail: { id: this.user.id, error: this.error },
+            this.dispatchEvent(new CustomEvent('product-error', {
+                detail: { id: this.producto.id, error: this.error },
                 bubbles: true,
                 composed: true,
             }));
@@ -54,13 +57,13 @@ export class UserActions extends LitElement {
     render() {
         return html`
             <div class="d-flex align-items-center">
-                <button class="btn btn-sm btn-warning me-2" @click=${this.edit} ?disabled=${this.loading}>Editar</button>
-                <confirm-button
+                <button class="btn btn-sm btn-warning me-2" @click=${this.edit} ?disabled=${this.loading || !this.isAdmin}>Editar</button>
+                <delete-button
                     .label=${'Eliminar'}
                     .confirmLabel=${'Sí, eliminar'}
-                    @confirmed=${this.onConfirmedDelete}
-                    .disabled=${this.loading}
-                ></confirm-button>
+                    @delete-confirmed=${this.onConfirmedDelete}
+                    .disabled=${this.loading || !this.isAdmin}
+                ></delete-button>
                 ${this.loading ? html`<div class="spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></div>` : ''}
                 ${this.error ? html`<div class="text-danger small ms-2">${this.error}</div>` : ''}
             </div>
@@ -68,4 +71,4 @@ export class UserActions extends LitElement {
     }
 }
 
-customElements.define('user-actions', UserActions);
+customElements.define('product-actions', ProductActions);

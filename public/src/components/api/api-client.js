@@ -33,7 +33,7 @@ export async function apiFetch(url, options = {}) {
         const text = await response.text();
         const snippet = text.replace(/\s+/g, ' ').trim().slice(0, 300);
         if (!response.ok) {
-            throw new Error(`Error del servidor ${response.status}: ${snippet || response.statusText}`);
+            throw new Error(`Error del servidor (${response.status}): ${snippet || response.statusText}`);
         }
         // Si la respuesta fue ok pero no es JSON, devolver el texto crudo
         return text;

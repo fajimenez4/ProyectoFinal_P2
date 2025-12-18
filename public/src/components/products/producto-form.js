@@ -18,7 +18,7 @@ export class ProductoForm extends LitElement {
         .grupo { margin-bottom: 12px; }
         label { display: block; margin-bottom: 6px; font-weight: 600; }
         input { width: 100%; padding: 10px; box-sizing: border-box; }
-        button { pade2ding: 10px 14px; cursor: pointer; }
+        button { padding: 10px 14px; cursor: pointer; }
         .ok { margin-top: 14px; padding: 12px; border: 1px solid #ddd; }
         .err { margin-top: 14px; padding: 12px; border: 1px solid #c00; color: #c00; }
         .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

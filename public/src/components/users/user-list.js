@@ -1,7 +1,9 @@
 import { LitElement, html } 
 from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
 import { apiFetch } from '../api/api-client.js';
-import './user-actions.js'; // <-- añadido
+import './user-actions.js';
+import '../shared/create-button.js';
+
 
 export class UserList extends LitElement {
     static properties = {
@@ -56,12 +58,12 @@ export class UserList extends LitElement {
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="mb-0">Usuarios registrados</h4>
 
-                        <button
-                            class="btn btn-primary btn-sm"
-                            @click=${this.crearUsuario}
-                        >
-                            + Crear usuario
-                        </button>
+                        <create-button
+                            label="Crear usuario"
+                            type="user"
+                            @create=${this.crearUsuario}>
+                        </create-button>
+
                     </div>
 
                     ${this.error ? html`
