@@ -9,37 +9,50 @@ class ProductoController extends Controller
 {
     public function index()
     {
-        return Producto::select('id', 'nombre', 'precio')->get();
+        // Todos los usuarios autenticados pueden ver productos
+        $productos = Producto::orderBy('created_at', 'desc')->get();
+        return response()->json($productos);
     }
 
     public function store(Request $request)
     {
-        $data = $request->validate([
+        // Solo admin y empleado pueden crear productos
+        $validated = $request->validate([
             'nombre' => 'required|string|max:255',
             'precio' => 'required|numeric|min:0',
-            'stock'  => 'required|integer|min:0',
+            'stock' => 'required|integer|min:0',
         ]);
 
-        return Producto::create($data);
+        $producto = Producto::create($validated);
+        return response()->json($producto, 201);
     }
 
     public function show($id)
     {
-        return Producto::findOrFail($id);
+        $producto = Producto::findOrFail($id);
+        return response()->json($producto);
     }
 
     public function update(Request $request, $id)
     {
+        // Solo admin y empleado pueden actualizar productos
         $producto = Producto::findOrFail($id);
 
-        $producto->update($request->only('nombre', 'precio', 'stock'));
+        $validated = $request->validate([
+            'nombre' => 'sometimes|required|string|max:255',
+            'precio' => 'sometimes|required|numeric|min:0',
+            'stock' => 'sometimes|required|integer|min:0',
+        ]);
 
-        return $producto;
+        $producto->update($validated);
+        return response()->json($producto);
     }
 
     public function destroy($id)
     {
-        Producto::destroy($id);
-        return response()->noContent();
+        // Solo admin y empleado pueden eliminar productos
+        $producto = Producto::findOrFail($id);
+        $producto->delete();
+        return response()->json(['message' => 'Producto eliminado exitosamente']);
     }
 }

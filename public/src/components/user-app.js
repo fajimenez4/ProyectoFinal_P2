@@ -1,7 +1,6 @@
 import { LitElement, html, css }
     from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
 import { apiFetch } from './api/api-client.js';
-
 import './auth/login-form.js';
 import './users/user-list.js';
 import './users/user-form.js';
@@ -163,7 +162,10 @@ export class UserApp extends LitElement {
     }
 
     render() {
-        const isAdmin = !!(this.user && ((this.user.roles && this.user.roles.some(r => r.name === 'admin')) || this.user.username === 'admin'));
+        // Verificar roles del usuario
+        const isAdmin = this.user?.roles?.some(r => r.name === 'admin') ?? false;
+        const isEmpleado = this.user?.roles?.some(r => r.name === 'empleado') ?? false;
+        const canManageProducts = isAdmin || isEmpleado;
 
         return html`
             <app-navbar .user=${this.user} @logout=${this.logout}></app-navbar>
@@ -191,14 +193,25 @@ export class UserApp extends LitElement {
                                 <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
                                     <div>
                                         <h3 class="card-title mb-1">Bienvenido, ${this.user.name}</h3>
-                                        <p class="mb-0 small text-muted">Usuario: ${this.user.username} · ${this.user.email}</p>
+                                        <p class="mb-0 small text-muted">
+                                            Usuario: ${this.user.username} · ${this.user.email}
+                                            ${this.user.roles?.length ? html`
+                                                <br>
+                                                <span class="mt-1 d-inline-block">
+                                                    Roles: 
+                                                    ${this.user.roles.map(r => html`
+                                                        <span class="badge bg-primary me-1">${r.name}</span>
+                                                    `)}
+                                                </span>
+                                            ` : ''}
+                                        </p>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                     
-
+                    <!-- SECCIÓN DE USUARIOS - SOLO ADMIN -->
                     ${isAdmin ? html`
                         <div class="row mb-4">
                             <div class="col-md-4 mb-4 mb-md-0">
@@ -210,17 +223,20 @@ export class UserApp extends LitElement {
                         </div>
                     ` : ''}
 
+                    <!-- SECCIÓN DE PRODUCTOS -->
                     <div class="row">
-                        ${isAdmin ? html`
+                        ${canManageProducts ? html`
+                            <!-- Admin y Empleado ven formulario + lista -->
                             <div class="col-md-4 mb-4">
                                 <producto-form></producto-form>
                             </div>
                             <div class="col-md-8">
-                                <product-list .isAdmin=${isAdmin}></product-list>
+                                <product-list .isAdmin=${canManageProducts}></product-list>
                             </div>
                         ` : html`
+                            <!-- Usuario sin permisos solo ve lista -->
                             <div class="col-12">
-                                <product-list .isAdmin=${isAdmin}></product-list>
+                                <product-list .isAdmin=${false}></product-list>
                             </div>
                         `}
                     </div>

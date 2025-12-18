@@ -4,37 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;  // ← AGREGAR ESTA LÍNEA
 use Illuminate\Support\Facades\Hash;
 
 class AuthController extends Controller
 {
     public function login(Request $request)
     {
-        $request->validate([
+        $credentials = $request->validate([
             'username' => 'required',
             'password' => 'required',
         ]);
 
-        $user = User::where('username', $request->username)->first();
-
-        if (!$user || !Hash::check($request->password, $user->password)) {
-            return response()->json([
-                'message' => 'Credenciales incorrectas'
-            ], 401);
+        if (!Auth::attempt($credentials)) {
+            return response()->json(['message' => 'Credenciales inválidas'], 401);
         }
 
-        if (!$user->estado) {
-            return response()->json([
-                'message' => 'Usuario inactivo'
-            ], 403);
-        }
-
-        $token = $user->createToken('api-token')->plainTextToken;
+        // Obtener el usuario autenticado desde el modelo
+        $user = User::with('roles')->find(Auth::id());
+        $token = $user->createToken('auth-token')->plainTextToken;
 
         return response()->json([
             'user' => $user,
-            'token' => $token
+            'token' => $token,
         ]);
+    }
+
+    public function register(Request $request)
+    {
+        $validated = $request->validate([
+            'username' => 'required|string|unique:users,username',
+            'name' => 'required|string',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:3',
+        ]);
+
+        $validated['password'] = Hash::make($validated['password']);
+        $validated['estado'] = true;
+
+        $user = User::create($validated);
+
+        // Auto-login después del registro
+        $token = $user->createToken('auth-token')->plainTextToken;
+
+        return response()->json([
+            'user' => $user->load('roles'),
+            'token' => $token,
+        ], 201);
     }
 
     public function logout(Request $request)
@@ -46,6 +62,8 @@ class AuthController extends Controller
 
     public function me(Request $request)
     {
-        return response()->json($request->user());
+        // Obtener usuario con roles
+        $user = User::with('roles')->find($request->user()->id);
+        return response()->json($user);
     }
 }

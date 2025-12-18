@@ -29,83 +29,62 @@ class UserController extends Controller
         abort(403, 'No autorizado');
     }
 
-    public function index(Request $request)
+    public function index()
     {
-        $this->authorizeAdmin($request);
-
-        if (Schema::hasTable('roles')) {
-            return User::with('roles')->get(['id', 'username', 'name', 'email', 'estado']);
-        }
-
-        return User::get(['id', 'username', 'name', 'email', 'estado']);
+        // Cargar roles de todos los usuarios
+        $users = User::with('roles')->orderBy('created_at', 'desc')->get();
+        return response()->json($users);
     }
 
     public function store(Request $request)
     {
-        $this->authorizeAdmin($request);
-
-        $rules = [
-            'username' => 'required|unique:users',
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required',
-            'estado' => 'boolean',
-        ];
-
-        if (Schema::hasTable('roles')) {
-            $rules['roles'] = 'array';
-            $rules['roles.*'] = 'integer|exists:roles,id';
-        }
-
-        $data = $request->validate($rules);
-
-        $data['password'] = Hash::make($data['password']);
-
-        $user = User::create($data);
-
-        if (Schema::hasTable('roles') && ! empty($data['roles'])) {
-            $user->roles()->sync($data['roles']);
-            return $user->load('roles');
-        }
-
-        return $user;
-    }
-
-    public function update(Request $request, User $user)
-    {
-        $this->authorizeAdmin($request);
-
-        $request->validate([
-            'username' => 'sometimes|required|unique:users,username,' . $user->id,
-            'email' => 'sometimes|required|email|unique:users,email,' . $user->id,
+        $validated = $request->validate([
+            'username' => 'required|string|unique:users,username',
+            'name' => 'required|string',
+            'email' => 'required|email|unique:users,email',
+            'password' => 'required|string|min:3',
             'estado' => 'sometimes|boolean',
-            // roles validación condicional más abajo
+            'roles' => 'sometimes|array',
+            'roles.*' => 'exists:roles,id',
         ]);
 
-        if (Schema::hasTable('roles')) {
-            $request->validate([
-                'roles' => 'sometimes|array',
-                'roles.*' => 'integer|exists:roles,id',
-            ]);
+        $validated['password'] = Hash::make($validated['password']);
+
+        $user = User::create($validated);
+
+        // Asignar roles si se proporcionaron
+        if (isset($validated['roles'])) {
+            $user->roles()->sync($validated['roles']);
         }
 
-        $data = $request->only(['username', 'name', 'email', 'estado']);
+        return response()->json($user->load('roles'), 201);
+    }
 
-        if ($request->password) {
-            $data['password'] = Hash::make($request->password);
+    public function update(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+
+        $validated = $request->validate([
+            'name' => 'sometimes|string',
+            'email' => 'sometimes|email|unique:users,email,' . $id,
+            'password' => 'sometimes|string|min:3',
+            'estado' => 'sometimes|boolean',
+            'roles' => 'sometimes|array',
+            'roles.*' => 'exists:roles,id',
+        ]);
+
+        if (isset($validated['password'])) {
+            $validated['password'] = Hash::make($validated['password']);
         }
 
-        $user->update($data);
+        $user->update($validated);
 
-        if (Schema::hasTable('roles') && $request->has('roles')) {
-            $user->roles()->sync($request->input('roles', []));
+        // Actualizar roles si se proporcionaron
+        if (isset($validated['roles'])) {
+            $user->roles()->sync($validated['roles']);
         }
 
-        if (Schema::hasTable('roles')) {
-            return $user->load('roles');
-        }
-
-        return $user;
+        return response()->json($user->load('roles'));
     }
 
     public function destroy(Request $request, User $user)

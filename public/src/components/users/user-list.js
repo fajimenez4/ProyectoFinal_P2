@@ -1,22 +1,23 @@
-import { LitElement, html } 
-from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { LitElement, html } from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
 import { apiFetch } from '../api/api-client.js';
 import './user-actions.js';
-import '../shared/create-button.js';
-
 
 export class UserList extends LitElement {
     static properties = {
         users: { type: Array },
         error: { type: String },
-        // ...removed confirmDeleteId...
+        loading: { type: Boolean },
     };
 
     constructor() {
         super();
         this.users = [];
         this.error = '';
-        // ...removed confirmDeleteId init...
+        this.loading = false;
+    }
+
+    createRenderRoot() {
+        return this; // Bootstrap
     }
 
     connectedCallback() {
@@ -25,26 +26,21 @@ export class UserList extends LitElement {
     }
 
     async loadUsers() {
+        this.loading = true;
+        this.error = '';
+        
         try {
-            const data = await apiFetch('/api/users');
-            this.users = data;
-            this.error = '';
+            this.users = await apiFetch('/api/users');
         } catch (err) {
             this.error = err.message;
             this.users = [];
+        } finally {
+            this.loading = false;
         }
     }
 
-    crearUsuario() {
+    createUser() {
         this.dispatchEvent(new CustomEvent('create-user', {
-            bubbles: true,
-            composed: true
-        }));
-    }
-
-    editarUsuario(user) {
-        this.dispatchEvent(new CustomEvent('edit-user', {
-            detail: user,
             bubbles: true,
             composed: true
         }));
@@ -52,59 +48,67 @@ export class UserList extends LitElement {
 
     render() {
         return html`
-            <div class="card shadow-sm mt-4">
+            <div class="card shadow-sm">
                 <div class="card-body">
-                    <!-- HEADER -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
-                        <h4 class="mb-0">Usuarios registrados</h4>
-
-                        <create-button
-                            label="Crear usuario"
-                            type="user"
-                            @create=${this.crearUsuario}>
-                        </create-button>
-
+                        <h4 class="mb-0">Usuarios</h4>
+                        <button class="btn btn-primary btn-sm" @click=${this.createUser}>
+                            + Nuevo usuario
+                        </button>
                     </div>
 
                     ${this.error ? html`
-                        <div class="alert alert-danger">
-                            ${this.error}
-                        </div>
+                        <div class="alert alert-danger">${this.error}</div>
                     ` : ''}
 
-                    <table class="table table-bordered table-striped align-middle">
-                        <thead class="table-dark">
-                            <tr>
-                                <th>ID</th>
-                                <th>Usuario</th>
-                                <th>Nombre</th>
-                                <th>Email</th>
-                                <th>Roles</th>
-                                <th>Estado</th>
-                                <th style="width: 180px">Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${this.users.map(user => html`
-                                <tr>
-                                    <td>${user.id}</td>
-                                    <td>${user.username}</td>
-                                    <td>${user.name}</td>
-                                    <td>${user.email}</td>
-                                    <td>${(user.roles || []).map(r => r.name).join(', ')}</td>
-                                    <td>
-                                        ${user.estado
-                                            ? html`<span class="badge bg-success">Activo</span>`
-                                            : html`<span class="badge bg-danger">Inactivo</span>`
-                                        }
-                                    </td>
-                                    <td>
-                                        <user-actions .user=${user}></user-actions>
-                                    </td>
-                                </tr>
-                            `)}
-                        </tbody>
-                    </table>
+                    ${this.loading ? html`
+                        <div class="text-center py-4">
+                            <div class="spinner-border" role="status">
+                                <span class="visually-hidden">Cargando...</span>
+                            </div>
+                        </div>
+                    ` : html`
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Usuario</th>
+                                        <th>Nombre</th>
+                                        <th>Email</th>
+                                        <th>Roles</th>
+                                        <th>Creado</th>
+                                        <th style="width:180px">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${this.users.length === 0 ? html`
+                                        <tr>
+                                            <td colspan="7" class="text-center text-muted py-4">
+                                                No hay usuarios registrados
+                                            </td>
+                                        </tr>
+                                    ` : this.users.map(user => html`
+                                        <tr>
+                                            <td>${user.id}</td>
+                                            <td>${user.username}</td>
+                                            <td>${user.name}</td>
+                                            <td>${user.email}</td>
+                                            <td>
+                                                ${user.roles?.map(r => html`
+                                                    <span class="badge bg-secondary me-1">${r.name}</span>
+                                                `) || html`<span class="text-muted">Sin rol</span>`}
+                                            </td>
+                                            <td>${user.created_at ? new Date(user.created_at).toLocaleDateString() : ''}</td>
+                                            <td>
+                                                <user-actions .user=${user}></user-actions>
+                                            </td>
+                                        </tr>
+                                    `)}
+                                </tbody>
+                            </table>
+                        </div>
+                    `}
                 </div>
             </div>
         `;

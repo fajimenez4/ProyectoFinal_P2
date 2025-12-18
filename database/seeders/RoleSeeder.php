@@ -7,12 +7,17 @@ use App\Models\Role;
 
 class RoleSeeder extends Seeder
 {
+    /**
+     * Run the database seeder.
+     */
     public function run(): void
     {
-        Role::insert([
-            ['name' => 'Administrador'],
-            ['name' => 'Empleado'],
-            ['name' => 'Cliente'],
-        ]);
+        $roles = ['admin', 'empleado', 'cliente'];
+
+        foreach ($roles as $roleName) {
+            Role::firstOrCreate(['name' => $roleName]);
+        }
+
+        $this->command->info('Roles creados: admin, empleado, cliente');
     }
 }
