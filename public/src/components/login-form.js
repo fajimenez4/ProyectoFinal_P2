@@ -1,5 +1,6 @@
 import { LitElement, html, css } 
 from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { apiFetch } from '../api/api-client.js';
 
 export class LoginForm extends LitElement {
     static properties = {
@@ -26,6 +27,7 @@ export class LoginForm extends LitElement {
         this.error = '';
         this.loading = false;
     }
+    
 
     onInput(e) {
         this[e.target.name] = e.target.value;
@@ -36,20 +38,13 @@ export class LoginForm extends LitElement {
         this.loading = true;
 
         try {
-            const res = await fetch('/api/login', {
+            const data = await apiFetch('/api/login', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     username: this.username,
                     password: this.password,
                 }),
             });
-
-            const data = await res.json();
-
-            if (!res.ok) {
-                throw new Error(data.message || 'Error de autenticación');
-            }
 
             // Guardar token
             localStorage.setItem('token', data.token);

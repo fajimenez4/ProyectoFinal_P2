@@ -1,8 +1,13 @@
 import { LitElement, html, css }
     from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { apiFetch } from '../api/api-client.js';
 
 import './login-form.js';
 import './user-list.js';
+import './user-form.js';
+import './app.navbar.js';
+import './product-list.js';
+import './producto-form.js';
 
 export class UserApp extends LitElement {
     static properties = {
@@ -42,29 +47,105 @@ export class UserApp extends LitElement {
             this.user = e.detail;
             this.token = localStorage.getItem('token');
         });
+        // Cuando se guarda o elimina un usuario, refrescar la lista
+        this.addEventListener('user-saved', () => this.refreshUsers());
+        this.addEventListener('user-deleted', () => this.refreshUsers());
+        // Productos: refrescar al crear/editar/eliminar
+        this.addEventListener('product-saved', () => this.refreshProducts());
+        this.addEventListener('product-deleted', () => this.refreshProducts());
+        // Crear/editar usuario: reenviar al formulario correspondiente
+        this.addEventListener('create-user', () => {
+            const form = this.querySelector('user-form');
+            if (form && typeof form.reset === 'function') form.reset();
+        });
+        // Crear/editar producto: reenviar al formulario correspondiente
+        this.addEventListener('create-product', () => {
+            const form = this.querySelector('producto-form');
+            if (form && typeof form.reset === 'function') form.reset();
+        });
+
+        this.addEventListener('edit-product', (e) => {
+            const form = this.querySelector('producto-form');
+            if (form) {
+                form.dispatchEvent(new CustomEvent('edit-product', {
+                    detail: e.detail,
+                    bubbles: true,
+                    composed: true,
+                }));
+            }
+        });
+
+        this.addEventListener('edit-user', (e) => {
+            const form = this.querySelector('user-form');
+            if (form) {
+                form.dispatchEvent(new CustomEvent('edit-user', {
+                    detail: e.detail,
+                    bubbles: true,
+                    composed: true,
+                }));
+            }
+        });
+
+        // Si hay token guardado, intentar cargar info del usuario actual
+        if (this.token && !this.user) {
+            this.loadCurrentUser();
+        }
     }
 
     logout() {
+        // Llamar al backend para invalidar token (si hay uno)
+        const token = localStorage.getItem('token');
+
+        if (token) {
+            fetch('/api/logout', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}` }
+            }).catch(() => {});
+        }
+
         localStorage.removeItem('token');
         this.user = null;
         this.token = null;
     }
 
+    // Evitar shadow DOM para que Bootstrap se aplique correctamente
+    createRenderRoot() {
+        return this;
+    }
+
+    async loadCurrentUser() {
+        try {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+
+            const user = await apiFetch('/api/me');
+            this.user = user;
+            this.token = token;
+        } catch (err) {
+            // token invalido -> limpiar
+            console.warn('No se pudo cargar usuario actual:', err.message);
+            localStorage.removeItem('token');
+            this.token = null;
+            this.user = null;
+        }
+    }
+
+    refreshUsers() {
+        const list = this.querySelector('user-list');
+        if (list && typeof list.loadUsers === 'function') {
+            list.loadUsers();
+        }
+    }
+    refreshProducts() {
+        const list = this.querySelector('product-list');
+        if (list && typeof list.loadProducts === 'function') {
+            list.loadProducts();
+        }
+    }
+
     render() {
         return html`
-            <nav class="navbar navbar-dark bg-dark">
-            <div class="container-fluid">
-                <span class="navbar-brand mb-0 h1">StoreManager</span>
-
-                ${this.user
-                ? html`
-                <button class="btn btn-outline-light btn-sm" @click=${this.logout}>
-                    Cerrar sesión
-                </button>
-                `
-                : ''}
-            </div>
-        </nav>
+            <app-navbar .user=${this.user} @logout=${this.logout}></app-navbar>
 
         <!-- CONTENIDO -->
         <div class="container mt-5">
@@ -79,30 +160,47 @@ export class UserApp extends LitElement {
             `
             : html`
             <!-- DASHBOARD -->
-            <div class="row justify-content-center mb-4">
-                <div class="col-md-8">
+            <div class="row mb-4">
+                <div class="col-12">
                     <div class="card shadow-sm">
-                        <div class="card-body">
-                            <h3 class="card-title mb-3">
-                                Bienvenido, ${this.user.name}
-                            </h3>
-
-                            <p class="mb-1"><b>Usuario:</b> ${this.user.username}</p>
-                            <p class="mb-1"><b>Email:</b> ${this.user.email}</p>
+                        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                            <div>
+                                <h3 class="card-title mb-1">Bienvenido, ${this.user.name}</h3>
+                                <p class="mb-0 small text-muted">Usuario: ${this.user.username} · ${this.user.email}</p>
+                            </div>
+                            <div>
+                                <button class="btn btn-outline-secondary btn-sm" @click=${this.logout}>Cerrar sesión</button>
+                            </div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- LISTADO DE USUARIOS -->
-            <div class="row justify-content-center">
-                <div class="col-md-10">
-                    <user-list></user-list>
+            <!-- Mostrar panel distinto para admin -->
+            ${this.user.username === 'admin' ? html`
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <producto-form></producto-form>
+                    </div>
+
+                    <div class="col-md-8">
+                        <product-list></product-list>
+                    </div>
                 </div>
-            </div>
+            ` : html`
+                <div class="row">
+                    <div class="col-md-4 mb-4">
+                        <user-form></user-form>
+                    </div>
+
+                    <div class="col-md-8">
+                        <user-list></user-list>
+                    </div>
+                </div>
             `}
-        </div>
-        `;
+            `}
+         </div>
+         `;
     }
 
 

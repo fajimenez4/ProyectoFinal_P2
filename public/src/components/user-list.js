@@ -1,18 +1,20 @@
 import { LitElement, html } 
 from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { apiFetch } from '../api/api-client.js';
+import './user-actions.js'; // <-- añadido
 
 export class UserList extends LitElement {
     static properties = {
         users: { type: Array },
         error: { type: String },
-        confirmDeleteId: { type: Number },
+        // ...removed confirmDeleteId...
     };
 
     constructor() {
         super();
         this.users = [];
         this.error = '';
-        this.confirmDeleteId = null;
+        // ...removed confirmDeleteId init...
     }
 
     connectedCallback() {
@@ -22,22 +24,12 @@ export class UserList extends LitElement {
 
     async loadUsers() {
         try {
-            const token = localStorage.getItem('token');
-
-            const res = await fetch('/api/users', {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (!res.ok) {
-                throw new Error('No autorizado o error en API');
-            }
-
-            this.users = await res.json();
+            const data = await apiFetch('/api/users');
+            this.users = data;
+            this.error = '';
         } catch (err) {
             this.error = err.message;
+            this.users = [];
         }
     }
 
@@ -56,28 +48,10 @@ export class UserList extends LitElement {
         }));
     }
 
-    confirmarEliminar(id) {
-        this.confirmDeleteId = id;
-    }
-
-    cancelarEliminar() {
-        this.confirmDeleteId = null;
-    }
-
-    eliminarUsuario(id) {
-        this.dispatchEvent(new CustomEvent('delete-user', {
-            detail: id,
-            bubbles: true,
-            composed: true
-        }));
-        this.confirmDeleteId = null;
-    }
-
     render() {
         return html`
             <div class="card shadow-sm mt-4">
                 <div class="card-body">
-
                     <!-- HEADER -->
                     <div class="d-flex justify-content-between align-items-center mb-3">
                         <h4 class="mb-0">Usuarios registrados</h4>
@@ -121,47 +95,9 @@ export class UserList extends LitElement {
                                         }
                                     </td>
                                     <td>
-                                        <button
-                                            class="btn btn-sm btn-warning me-1"
-                                            @click=${() => this.editarUsuario(user)}
-                                        >
-                                            Editar
-                                        </button>
-
-                                        <button
-                                            class="btn btn-sm btn-danger"
-                                            @click=${() => this.confirmarEliminar(user.id)}
-                                        >
-                                            Eliminar
-                                        </button>
+                                        <user-actions .user=${user}></user-actions>
                                     </td>
                                 </tr>
-
-                                ${this.confirmDeleteId === user.id ? html`
-                                    <tr class="table-warning">
-                                        <td colspan="6">
-                                            <div class="d-flex justify-content-between align-items-center">
-                                                <span>
-                                                    ¿Eliminar al usuario <b>${user.username}</b>?
-                                                </span>
-                                                <div>
-                                                    <button
-                                                        class="btn btn-sm btn-danger me-2"
-                                                        @click=${() => this.eliminarUsuario(user.id)}
-                                                    >
-                                                        Sí, eliminar
-                                                    </button>
-                                                    <button
-                                                        class="btn btn-sm btn-secondary"
-                                                        @click=${this.cancelarEliminar}
-                                                    >
-                                                        Cancelar
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ` : ''}
                             `)}
                         </tbody>
                     </table>

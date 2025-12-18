@@ -6,36 +6,13 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 
-
 class AuthController extends Controller
 {
-    // POST /api/register
-    public function register(Request $request)
-    {
-        $request->validate([
-            'username' => 'required|unique:users',
-            'name'     => 'required',
-            'email'    => 'required|email|unique:users',
-            'password' => 'required|min:6',
-        ]);
-
-        $user = User::create([
-            'username' => $request->username,
-            'name'     => $request->name,
-            'email'    => $request->email,
-            'password' => Hash::make($request->password),
-            'estado'   => true,
-        ]);
-
-        return response()->json($user, 201);
-    }
-
-    // POST /api/login
     public function login(Request $request)
     {
         $request->validate([
-            'username' => 'required|string',
-            'password' => 'required|string',
+            'username' => 'required',
+            'password' => 'required',
         ]);
 
         $user = User::where('username', $request->username)->first();
@@ -48,7 +25,7 @@ class AuthController extends Controller
 
         if (!$user->estado) {
             return response()->json([
-                'message' => 'Usuario deshabilitado'
+                'message' => 'Usuario inactivo'
             ], 403);
         }
 
@@ -60,16 +37,15 @@ class AuthController extends Controller
         ]);
     }
 
-    // GET /api/me
-    public function me(Request $request)
-    {
-        return $request->user();
-    }
-
-    // POST /api/logout
     public function logout(Request $request)
     {
         $request->user()->currentAccessToken()->delete();
+
         return response()->json(['message' => 'Sesión cerrada']);
+    }
+
+    public function me(Request $request)
+    {
+        return response()->json($request->user());
     }
 }

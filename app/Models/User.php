@@ -22,4 +22,20 @@ class User extends Authenticatable
         'password',
         'remember_token',
     ];
+
+    // Asegurarnos de que `username` aparezca en el array/json
+    protected $appends = [
+        'username',
+    ];
+
+    public function getUsernameAttribute()
+    {
+        $columns = ['username', 'user', 'usuario', 'email'];
+        foreach ($columns as $col) {
+            if (array_key_exists($col, $this->attributes) && $this->attributes[$col] !== null) {
+                return $this->attributes[$col];
+            }
+        }
+        return null;
+    }
 }

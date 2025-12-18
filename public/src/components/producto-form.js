@@ -1,14 +1,17 @@
 import { LitElement, html, css } 
 from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { apiFetch } from '../api/api-client.js';
 
 export class ProductoForm extends LitElement {
     static properties = {
+        id: { type: Number },
         nombre: { type: String },
         precio: { type: String },
         stock: { type: String },
         creado: { type: Object },
         error: { type: String },
         enviando: { type: Boolean },
+        mode: { type: String }, // create | edit
     };
 
     static styles = css`
@@ -23,12 +26,18 @@ export class ProductoForm extends LitElement {
 
     constructor() {
         super();
+        this.reset();
+    }
+
+    reset() {
+        this.id = null;
         this.nombre = "";
         this.precio = "";
         this.stock = "";
         this.creado = null;
         this.error = "";
         this.enviando = false;
+        this.mode = 'create';
     }
 
     createRenderRoot() {
@@ -40,37 +49,50 @@ export class ProductoForm extends LitElement {
         this[campo] = e.target.value;
     }
 
+    connectedCallback() {
+        super.connectedCallback();
+        this.addEventListener('create-product', () => {
+            this.reset();
+        });
+
+        this.addEventListener('edit-product', (e) => {
+            const p = e.detail;
+            this.id = p.id;
+            this.nombre = p.nombre;
+            this.precio = String(p.precio);
+            this.stock = String(p.stock);
+            this.mode = 'edit';
+            this.error = '';
+        });
+    }
+
     async guardar() {
         this.error = "";
         this.creado = null;
         this.enviando = true;
 
         try {
-            const res = await fetch("/api/productos", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    nombre: this.nombre,
-                    precio: Number(this.precio),
-                    stock: Number(this.stock),
-                }),
-            });
+            const payload = {
+                nombre: this.nombre,
+                precio: Number(this.precio),
+                stock: Number(this.stock),
+            };
 
-            if (!res.ok) {
-                const data = await res.json().catch(() => null);
-
-                if (data?.errors) {
-                    const mensajes = Object.values(data.errors).flat().join(" | ");
-                    throw new Error(mensajes);
-                }
-
-                throw new Error(`Error HTTP ${res.status}`);
+            if (this.mode === 'edit' && this.id) {
+                await apiFetch(`/api/productos/${this.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify(payload),
+                });
+            } else {
+                this.creado = await apiFetch("/api/productos", {
+                    method: "POST",
+                    body: JSON.stringify(payload),
+                });
             }
 
-            this.creado = await res.json();
-            this.nombre = "";
-            this.precio = "";
-            this.stock = "";
+            // Emitir evento global para refrescar lista
+            this.dispatchEvent(new CustomEvent('product-saved', { bubbles: true, composed: true }));
+            this.reset();
         } catch (err) {
             this.error = err?.message ?? "Error desconocido";
         } finally {
@@ -78,9 +100,13 @@ export class ProductoForm extends LitElement {
         }
     }
 
+    cancelEdit() {
+        this.reset();
+    }
+
     render() {
         return html`
-        <h2 class="mb-4">Ingresar producto</h2>
+        <h2 class="mb-4">${this.mode === 'edit' ? 'Editar producto' : 'Ingresar producto'}</h2>
 
         <div class="mb-3">
             <label class="form-label">Nombre</label>
@@ -111,11 +137,15 @@ export class ProductoForm extends LitElement {
             </div>
         </div>
 
-        <button class="btn btn-primary"
-            ?disabled=${this.enviando}
-            @click=${this.guardar}>
-            ${this.enviando ? "Guardando..." : "Guardar"}
-        </button>
+        <div class="d-flex gap-2">
+            ${this.mode === 'edit' ? html`
+                <button class="btn btn-secondary" @click=${this.cancelEdit} ?disabled=${this.enviando}>Cancelar</button>
+            ` : ''}
+
+            <button class="btn btn-primary" ?disabled=${this.enviando} @click=${this.guardar}>
+                ${this.enviando ? "Guardando..." : (this.mode === 'edit' ? 'Actualizar' : 'Guardar')}
+            </button>
+        </div>
 
         ${this.error
                     ? html`<div class="alert alert-danger mt-3">${this.error}</div>`

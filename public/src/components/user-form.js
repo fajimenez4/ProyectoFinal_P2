@@ -1,5 +1,6 @@
 import { LitElement, html }
 from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
+import { apiFetch } from '../api/api-client.js';
 
 export class UserForm extends LitElement {
     static properties = {
@@ -61,8 +62,6 @@ export class UserForm extends LitElement {
         this.loading = true;
 
         try {
-            const token = localStorage.getItem('token');
-
             const payload = {
                 username: this.username,
                 name: this.name,
@@ -80,20 +79,10 @@ export class UserForm extends LitElement {
 
             const method = this.mode === 'edit' ? 'PUT' : 'POST';
 
-            const res = await fetch(url, {
+            await apiFetch(url, {
                 method,
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json',
-                },
                 body: JSON.stringify(payload),
             });
-
-            if (!res.ok) {
-                const data = await res.json().catch(() => null);
-                throw new Error(data?.message || 'Error al guardar');
-            }
 
             this.dispatchEvent(new CustomEvent('user-saved', {
                 bubbles: true,
