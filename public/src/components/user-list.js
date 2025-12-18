@@ -77,6 +77,7 @@ export class UserList extends LitElement {
                                 <th>Usuario</th>
                                 <th>Nombre</th>
                                 <th>Email</th>
+                                <th>Roles</th>
                                 <th>Estado</th>
                                 <th style="width: 180px">Acciones</th>
                             </tr>
@@ -88,6 +89,7 @@ export class UserList extends LitElement {
                                     <td>${user.username}</td>
                                     <td>${user.name}</td>
                                     <td>${user.email}</td>
+                                    <td>${(user.roles || []).map(r => r.name).join(', ')}</td>
                                     <td>
                                         ${user.estado
                                             ? html`<span class="badge bg-success">Activo</span>`

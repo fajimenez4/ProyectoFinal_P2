@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\User;
+use App\Models\Role;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
@@ -44,10 +45,16 @@ class SuperAdminSeeder extends Seeder
         try {
             if ($found || in_array('email', $columns)) {
                 $where = $found ? [$found => $keyValue] : ['email' => 'superadmin@example.com'];
-                User::updateOrCreate($where, $attributes);
+                $user = User::updateOrCreate($where, $attributes);
+
+                // Crear role 'admin' si no existe y asignarlo
+                $role = Role::firstOrCreate(['name' => 'admin']);
+                if (! $user->roles()->where('role_id', $role->id)->exists()) {
+                    $user->roles()->syncWithoutDetaching([$role->id]);
+                }
 
                 if ($this->command) {
-                    $this->command->info("Superadmin creado/actualizado (identificador: " . array_key_first($where) . "=" . $where[array_key_first($where)] . ")");
+                    $this->command->info("Superadmin creado/actualizado usando columna '{$found}' (usuario: {$keyValue}, contraseña: 123)");
                 }
                 return;
             }
@@ -64,6 +71,13 @@ class SuperAdminSeeder extends Seeder
             if (in_array('updated_at', $columns)) $insert['updated_at'] = $now;
 
             DB::table('users')->insertOrIgnore($insert);
+
+            // Intentar obtener el usuario y asignar role admin
+            $user = User::where('email', 'superadmin@example.com')->first();
+            if ($user) {
+                $role = Role::firstOrCreate(['name' => 'admin']);
+                $user->roles()->syncWithoutDetaching([$role->id]);
+            }
 
             if ($this->command) {
                 $this->command->info('Superadmin creado/actualizado (fallback).');

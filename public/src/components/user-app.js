@@ -43,9 +43,10 @@ export class UserApp extends LitElement {
         super.connectedCallback();
 
         // Escuchar evento de login desde cualquier componente hijo
-        this.addEventListener('login-success', (e) => {
-            this.user = e.detail;
+        this.addEventListener('login-success', async (e) => {
+            // Guardar token ya lo hace el componente de login; recargar usuario
             this.token = localStorage.getItem('token');
+            await this.loadCurrentUser(); // obtiene usuario con roles desde API
         });
         // Cuando se guarda o elimina un usuario, refrescar la lista
         this.addEventListener('user-saved', () => this.refreshUsers());
@@ -144,63 +145,54 @@ export class UserApp extends LitElement {
     }
 
     render() {
+        const isAdmin = !!(this.user && ((this.user.roles && this.user.roles.some(r => r.name === 'admin')) || this.user.username === 'admin'));
+
         return html`
             <app-navbar .user=${this.user} @logout=${this.logout}></app-navbar>
 
-        <!-- CONTENIDO -->
-        <div class="container mt-5">
-            ${!this.token || !this.user
-            ? html`
-            <!-- LOGIN -->
-            <div class="row justify-content-center">
-                <div class="col-md-5">
-                    <login-form></login-form>
-                </div>
-            </div>
-            `
-            : html`
-            <!-- DASHBOARD -->
-            <div class="row mb-4">
-                <div class="col-12">
-                    <div class="card shadow-sm">
-                        <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
-                            <div>
-                                <h3 class="card-title mb-1">Bienvenido, ${this.user.name}</h3>
-                                <p class="mb-0 small text-muted">Usuario: ${this.user.username} · ${this.user.email}</p>
-                            </div>
-                            <div>
-                                <button class="btn btn-outline-secondary btn-sm" @click=${this.logout}>Cerrar sesión</button>
+            <!-- CONTENIDO -->
+            <div class="container mt-5">
+                ${!this.token || !this.user ? html`
+                    <!-- LOGIN -->
+                    <div class="row justify-content-center">
+                        <div class="col-md-5">
+                            <login-form></login-form>
+                        </div>
+                    </div>
+                ` : html`
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card shadow-sm">
+                                <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+                                    <div>
+                                        <h3 class="card-title mb-1">Bienvenido, ${this.user.name}</h3>
+                                        <p class="mb-0 small text-muted">Usuario: ${this.user.username} · ${this.user.email}</p>
+                                    </div>
+                                    <div>
+                                        <button class="btn btn-outline-secondary btn-sm" @click=${this.logout}>Cerrar sesión</button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+
+                    <div class="row">
+                        ${isAdmin ? html`
+                            <div class="col-md-4 mb-4">
+                                <producto-form></producto-form>
+                            </div>
+                            <div class="col-md-8">
+                                <product-list .isAdmin=${isAdmin}></product-list>
+                            </div>
+                        ` : html`
+                            <div class="col-12">
+                                <product-list .isAdmin=${isAdmin}></product-list>
+                            </div>
+                        `}
+                    </div>
+                `}
             </div>
-
-            <!-- Mostrar panel distinto para admin -->
-            ${this.user.username === 'admin' ? html`
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <producto-form></producto-form>
-                    </div>
-
-                    <div class="col-md-8">
-                        <product-list></product-list>
-                    </div>
-                </div>
-            ` : html`
-                <div class="row">
-                    <div class="col-md-4 mb-4">
-                        <user-form></user-form>
-                    </div>
-
-                    <div class="col-md-8">
-                        <user-list></user-list>
-                    </div>
-                </div>
-            `}
-            `}
-         </div>
-         `;
+        `;
     }
 
 

@@ -13,11 +13,15 @@ export class UserForm extends LitElement {
         error: { type: String },
         loading: { type: Boolean },
         mode: { type: String }, // create | edit
+        rolesList: { type: Array },
+        selectedRoles: { type: Array },
     };
 
     constructor() {
         super();
         this.reset();
+        this.rolesList = [];
+        this.selectedRoles = [];
     }
 
     reset() {
@@ -30,6 +34,7 @@ export class UserForm extends LitElement {
         this.error = '';
         this.loading = false;
         this.mode = 'create';
+        this.selectedRoles = [];
     }
 
     connectedCallback() {
@@ -49,12 +54,30 @@ export class UserForm extends LitElement {
             this.password = '';
             this.mode = 'edit';
             this.error = '';
+            this.selectedRoles = (user.roles || []).map(r => r.id);
+        });
+
+        // Cargar lista de roles
+        apiFetch('/api/roles').then(r => {
+            this.rolesList = Array.isArray(r) ? r : [];
+        }).catch(() => {
+            this.rolesList = [];
         });
     }
 
     onInput(e) {
         const { name, value, type, checked } = e.target;
         this[name] = type === 'checkbox' ? checked : value;
+    }
+
+    // Actualizar selección de roles
+    onRoleToggle(e, roleId) {
+        roleId = Number(roleId);
+        if (e.target.checked) {
+            if (!this.selectedRoles.includes(roleId)) this.selectedRoles = [...this.selectedRoles, roleId];
+        } else {
+            this.selectedRoles = this.selectedRoles.filter(id => id !== roleId);
+        }
     }
 
     async submit() {
@@ -67,16 +90,12 @@ export class UserForm extends LitElement {
                 name: this.name,
                 email: this.email,
                 estado: this.estado,
+                roles: this.selectedRoles
             };
 
-            if (this.password) {
-                payload.password = this.password;
-            }
+            if (this.password) payload.password = this.password;
 
-            const url = this.mode === 'edit'
-                ? `/api/users/${this.id}`
-                : `/api/users`;
-
+            const url = this.mode === 'edit' ? `/api/users/${this.id}` : `/api/users`;
             const method = this.mode === 'edit' ? 'PUT' : 'POST';
 
             await apiFetch(url, {
@@ -176,6 +195,23 @@ export class UserForm extends LitElement {
                             Usuario activo
                         </label>
                     </div>
+
+                    ${this.rolesList.length ? html`
+                    <div class="mb-3">
+                        <label class="form-label">Roles</label>
+                        <div>
+                            ${this.rolesList.map(r => html`
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="role-${r.id}"
+                                        .checked=${this.selectedRoles.includes(r.id)}
+                                        @change=${(e) => this.onRoleToggle(e, r.id)}
+                                    >
+                                    <label class="form-check-label" for="role-${r.id}">${r.name}</label>
+                                </div>
+                            `)}
+                        </div>
+                    </div>
+                    ` : ''}
 
                     <div class="d-flex justify-content-end">
                         ${this.mode === 'edit' ? html`
