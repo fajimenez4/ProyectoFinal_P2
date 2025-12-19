@@ -58,7 +58,7 @@ export class UserActions extends LitElement {
 
     render() {
         // Prevenir eliminar al usuario admin principal
-        const isAdminUser = this.user?.username === 'admin' || this.user?.id === 1;
+        const isProtectedUser = this.user?.username === 'admin' || this.user?.id === 1;
 
         return html`
             <div class="d-flex align-items-center gap-2">
@@ -70,12 +70,14 @@ export class UserActions extends LitElement {
                     Editar
                 </button>
 
-                ${isAdminUser ? html`
-                    <create-button>
-                        .label=${'Crear nuevo usuario'}
-                        .confirmLabel=${'Sí, crear nuevo usuario'}
-                    >                    
-                    /create-button>
+                ${isProtectedUser ? html`
+                    <button 
+                        class="btn btn-sm btn-secondary" 
+                        disabled
+                        title="No se puede eliminar el usuario administrador"
+                    >
+                        <i class="bi bi-shield-lock-fill"></i> Protegido
+                    </button>
                 ` : html`
                     <delete-button
                         .label=${'Eliminar'}

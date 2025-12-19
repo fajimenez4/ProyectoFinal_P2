@@ -203,11 +203,13 @@ export class ProductoForm extends LitElement {
                         <label class="form-label">Precio</label>
                         <input 
                             class="form-control"
-                            type="text"
-                            inputmode="decimal"
+                            type="number"
+                            step="0.01"
+                            min="0"
                             name="precio"
                             .value=${this.precio}
                             @input=${this.onInput}
+                            @keydown=${this.onKeyDownPrecio}
                             placeholder="0.00"
                         >
                         <small class="text-muted">Solo números y punto decimal</small>
@@ -217,11 +219,13 @@ export class ProductoForm extends LitElement {
                         <label class="form-label">Stock</label>
                         <input 
                             class="form-control"
-                            type="text"
-                            inputmode="numeric"
+                            type="number"
+                            step="1"
+                            min="0"
                             name="stock"
                             .value=${this.stock}
                             @input=${this.onInput}
+                            @keydown=${this.onKeyDownStock}
                             placeholder="0"
                         >
                         <small class="text-muted">Solo números enteros</small>
