@@ -1,5 +1,6 @@
 import { LitElement, html } from "https://cdn.jsdelivr.net/npm/lit@3.2.1/+esm";
 import { apiFetch } from '../api/api-client.js';
+import '../shared/save-button.js';
 
 export class UserForm extends LitElement {
     static properties = {
@@ -15,12 +16,14 @@ export class UserForm extends LitElement {
         success: { type: String },
         rolesList: { type: Array },
         selectedRoles: { type: Array },
+        visible: { type: Boolean },
     };
 
     constructor() {
         super();
         this.reset();
         this.rolesList = [];
+        this.visible = false;
     }
 
     reset() {
@@ -47,6 +50,11 @@ export class UserForm extends LitElement {
         // Escuchar evento de crear usuario
         this.addEventListener('create-user', () => {
             this.reset();
+            this.visible = true;
+            // Cargar roles solo cuando se abre el formulario y hay token
+            if (localStorage.getItem('token') && this.mode !== 'register') {
+                this.loadRoles();
+            }
         });
 
         // Escuchar evento de editar usuario
@@ -62,13 +70,22 @@ export class UserForm extends LitElement {
             this.error = '';
             this.success = '';
             this.selectedRoles = (user.roles || []).map(r => r.id);
+            this.visible = true;
+            // Cargar roles al editar
+            this.loadRoles();
         });
 
-        // Cargar lista de roles disponibles
-        this.loadRoles();
+        // NO cargar roles automáticamente en connectedCallback
+        // Solo cargar cuando se muestra el formulario
     }
 
     async loadRoles() {
+        // Solo cargar roles si hay token y no estamos en modo registro
+        const token = localStorage.getItem('token');
+        if (!token || this.mode === 'register') {
+            return;
+        }
+
         try {
             const roles = await apiFetch('/api/roles');
             this.rolesList = Array.isArray(roles) ? roles : [];
@@ -94,16 +111,55 @@ export class UserForm extends LitElement {
         }
     }
 
+    validarFormulario() {
+        const errores = [];
+        const isRegister = this.mode === 'register';
+        const isEdit = this.mode === 'edit';
+
+        if (!this.username.trim()) {
+            errores.push('El usuario es obligatorio');
+        }
+
+        if (!this.name.trim()) {
+            errores.push('El nombre es obligatorio');
+        }
+
+        if (!this.email.trim()) {
+            errores.push('El email es obligatorio');
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.email)) {
+            errores.push('El email no es válido');
+        }
+
+        if (!isEdit && !this.password) {
+            errores.push('La contraseña es obligatoria');
+        }
+
+        if (this.password && this.password.length < 3) {
+            errores.push('La contraseña debe tener al menos 3 caracteres');
+        }
+
+        if (errores.length > 0) {
+            this.error = errores.join('. ');
+            return false;
+        }
+
+        return true;
+    }
+
     async save() {
+        if (!this.validarFormulario()) {
+            return;
+        }
+
         this.error = '';
         this.success = '';
         this.loading = true;
 
         try {
             const payload = {
-                username: this.username,
-                name: this.name,
-                email: this.email,
+                username: this.username.trim(),
+                name: this.name.trim(),
+                email: this.email.trim(),
                 estado: this.estado,
                 roles: this.selectedRoles
             };
@@ -124,9 +180,9 @@ export class UserForm extends LitElement {
             } else if (this.mode === 'register') {
                 // Registro público (sin roles ni estado)
                 const registerPayload = {
-                    username: this.username,
-                    name: this.name,
-                    email: this.email,
+                    username: this.username.trim(),
+                    name: this.name.trim(),
+                    email: this.email.trim(),
                     password: this.password
                 };
                 result = await apiFetch('/api/register', {
@@ -162,7 +218,10 @@ export class UserForm extends LitElement {
 
             // Limpiar formulario después de un delay (excepto en registro que redirige)
             if (this.mode !== 'register') {
-                setTimeout(() => this.reset(), 1500);
+                setTimeout(() => {
+                    this.reset();
+                    this.visible = false;
+                }, 1500);
             }
 
         } catch (err) {
@@ -174,6 +233,7 @@ export class UserForm extends LitElement {
 
     cancel() {
         this.reset();
+        this.visible = false;
     }
 
     goToLogin() {
@@ -187,11 +247,20 @@ export class UserForm extends LitElement {
         const isRegister = this.mode === 'register';
         const isEdit = this.mode === 'edit';
 
+        // En modo registro siempre mostrar
+        if (isRegister) {
+            this.visible = true;
+        }
+
+        if (!this.visible) {
+            return html``;
+        }
+
         return html`
             <div class="card shadow-sm mb-4">
                 <div class="card-body">
                     <h4 class="card-title mb-4">
-                        ${isRegister ? 'Crear cuenta' : isEdit ? 'Editar usuario' : 'Crear usuario'}
+                        ${isRegister ? 'Crear cuenta' : isEdit ? 'Editar usuario' : 'Nuevo usuario'}
                     </h4>
 
                     ${this.error ? html`
@@ -254,6 +323,7 @@ export class UserForm extends LitElement {
                             @input=${this.onInput}
                             placeholder=${isEdit ? 'Nueva contraseña (opcional)' : 'Contraseña'}
                         />
+                        <small class="text-muted">Mínimo 3 caracteres</small>
                     </div>
 
                     ${!isRegister ? html`
@@ -294,7 +364,7 @@ export class UserForm extends LitElement {
                     ` : ''}
 
                     <div class="d-flex gap-2">
-                        ${isEdit ? html`
+                        ${!isRegister ? html`
                             <button 
                                 class="btn btn-secondary" 
                                 @click=${this.cancel}
@@ -304,20 +374,13 @@ export class UserForm extends LitElement {
                             </button>
                         ` : ''}
 
-                        <button
-                            class="btn btn-primary"
-                            @click=${this.save}
-                            ?disabled=${this.loading}
-                        >
-                            ${this.loading 
-                                ? 'Guardando...' 
-                                : isEdit 
-                                    ? 'Actualizar' 
-                                    : isRegister 
-                                        ? 'Registrarse' 
-                                        : 'Guardar'
-                            }
-                        </button>
+                        <save-button
+                            .loading=${this.loading}
+                            .label=${isEdit ? 'Actualizar' : isRegister ? 'Registrarse' : 'Guardar'}
+                            .loadingLabel=${isEdit ? 'Actualizando...' : isRegister ? 'Registrando...' : 'Guardando...'}
+                            .variant=${isRegister ? 'success' : 'primary'}
+                            @save-click=${this.save}
+                        ></save-button>
                     </div>
 
                     ${isRegister ? html`

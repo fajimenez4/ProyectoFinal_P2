@@ -71,35 +71,52 @@ export class UserApp extends LitElement {
         // Productos: refrescar al crear/editar/eliminar
         this.addEventListener('product-saved', () => this.refreshProducts());
         this.addEventListener('product-deleted', () => this.refreshProducts());
-        // Crear/editar usuario: reenviar al formulario correspondiente
-        this.addEventListener('create-user', () => {
+
+        // IMPORTANTE: Capturar eventos de create/edit y reenviarlos a los formularios
+        // Los eventos vienen desde las listas/actions, necesitamos redirigirlos a los formularios
+
+        this.addEventListener('create-user', (e) => {
+            e.stopPropagation(); // Evitar propagación múltiple
             const form = this.querySelector('user-form');
-            if (form && typeof form.reset === 'function') form.reset();
+            if (form) {
+                form.dispatchEvent(new CustomEvent('create-user', {
+                    bubbles: false,
+                    composed: false,
+                }));
+            }
         });
-        // Crear/editar producto: reenviar al formulario correspondiente
-        this.addEventListener('create-product', () => {
+
+        this.addEventListener('create-product', (e) => {
+            e.stopPropagation(); // Evitar propagación múltiple
             const form = this.querySelector('producto-form');
-            if (form && typeof form.reset === 'function') form.reset();
+            if (form) {
+                form.dispatchEvent(new CustomEvent('create-product', {
+                    bubbles: false,
+                    composed: false,
+                }));
+            }
         });
 
         this.addEventListener('edit-product', (e) => {
+            e.stopPropagation(); // Evitar propagación múltiple
             const form = this.querySelector('producto-form');
             if (form) {
                 form.dispatchEvent(new CustomEvent('edit-product', {
                     detail: e.detail,
-                    bubbles: true,
-                    composed: true,
+                    bubbles: false,
+                    composed: false,
                 }));
             }
         });
 
         this.addEventListener('edit-user', (e) => {
+            e.stopPropagation(); // Evitar propagación múltiple
             const form = this.querySelector('user-form');
             if (form) {
                 form.dispatchEvent(new CustomEvent('edit-user', {
                     detail: e.detail,
-                    bubbles: true,
-                    composed: true,
+                    bubbles: false,
+                    composed: false,
                 }));
             }
         });
@@ -214,11 +231,11 @@ export class UserApp extends LitElement {
                     <!-- SECCIÓN DE USUARIOS - SOLO ADMIN -->
                     ${isAdmin ? html`
                         <div class="row mb-4">
-                            <div class="col-md-4 mb-4 mb-md-0">
-                                <user-form></user-form>
-                            </div>
-                            <div class="col-md-8">
+                            <div class="col-md-8 mb-4 mb-md-0 order-md-1">
                                 <user-list></user-list>
+                            </div>
+                            <div class="col-md-4 order-md-2">
+                                <user-form></user-form>
                             </div>
                         </div>
                     ` : ''}
@@ -227,11 +244,11 @@ export class UserApp extends LitElement {
                     <div class="row">
                         ${canManageProducts ? html`
                             <!-- Admin y Empleado ven formulario + lista -->
-                            <div class="col-md-4 mb-4">
-                                <producto-form></producto-form>
-                            </div>
-                            <div class="col-md-8">
+                            <div class="col-md-8 mb-4 order-md-1">
                                 <product-list .isAdmin=${canManageProducts}></product-list>
+                            </div>
+                            <div class="col-md-4 order-md-2">
+                                <producto-form></producto-form>
                             </div>
                         ` : html`
                             <!-- Usuario sin permisos solo ve lista -->

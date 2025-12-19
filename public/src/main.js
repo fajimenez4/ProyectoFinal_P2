@@ -9,3 +9,4 @@ import './components/products/product-actions.js';
 import './components/shared/delete-button.js';
 import './components/shared/create-button.js';
 import './components/user-app.js';
+import './components/shared/save-button.js';

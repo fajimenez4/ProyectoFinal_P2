@@ -71,13 +71,11 @@ export class UserActions extends LitElement {
                 </button>
 
                 ${isAdminUser ? html`
-                    <button 
-                        class="btn btn-sm btn-secondary" 
-                        disabled
-                        title="No se puede eliminar el usuario admin"
-                    >
-                        Protegido
-                    </button>
+                    <create-button>
+                        .label=${'Crear nuevo usuario'}
+                        .confirmLabel=${'Sí, crear nuevo usuario'}
+                    >                    
+                    /create-button>
                 ` : html`
                     <delete-button
                         .label=${'Eliminar'}
